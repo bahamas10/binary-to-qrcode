@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>Binary Hex to QR Code</title>
+		<style>
+		</style>
+		<script src="./qr.js"></script>
+		<script>
+			var canvas;
+			var ctx;
+			var hextextarea;
+			var binarytextarea;
+			var warning;
+			var reversedbox;
+			var dllink;
+
+			var canvassize = 400;
+
+			window.addEventListener('load', load);
+			function load() {
+				canvas = document.getElementById('qrcode');
+				ctx = canvas.getContext('2d');
+				hextextarea = document.getElementById('hex');
+				binarytextarea = document.getElementById('binary');
+				warningspan = document.getElementById('warning');
+				reversedbox = document.getElementById('reverse');
+				document.getElementById('generate').onclick = ongenerate;
+				dllink = document.getElementById('download');
+				dllink.onclick = ondownload;
+
+				hextextarea.style.width = canvassize + 'px';
+				binarytextarea.style.width = canvassize + 'px';
+
+				hextextarea.onkeyup = hexonkeyup;
+				binarytextarea.onkeyup = binaryonkeyup;
+				//ctx.fillRect(20,20,150,100);
+			}
+
+			function validateHex(s) {
+				return s.match(/^[a-fA-F0-9]*$/g);
+			}
+			function validateBinary(s) {
+				return s.match(/^[01]*$/g);
+			}
+
+			function hexonkeyup() {
+				var s = hextextarea.value;
+
+				// validate
+				if (!validateHex(s)) {
+					// bad
+					hextextarea.className = 'bad';
+					binarytextarea.value = '';
+					return;
+				}
+				hextextarea.className = '';
+				binarytextarea.className = '';
+
+				// convert to binary
+				var h = s;
+				var b = hex2bin(h);
+
+				binarytextarea.value = b;
+			}
+
+			function binaryonkeyup() {
+				var s = binarytextarea.value;
+
+				// validate
+				if (!validateBinary(s)) {
+					// bad
+					binarytextarea.className = 'bad';
+					hextextarea.value = '';
+					return;
+				}
+				hextextarea.className = '';
+				binarytextarea.className = '';
+
+				// convert to hex
+				var b = s;
+				var h = bin2hex(b);
+
+				hextextarea.value = h;
+			}
+
+			function ongenerate() {
+				if (!validateHex(hextextarea.value) ||
+				    !validateBinary(binarytextarea.value)) {
+					alert('invalid input');
+					return;
+				}
+
+				canvas.width = canvassize;
+				canvas.height = canvassize;
+
+				ctx.fillStyle = 'white';
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+				var b = binarytextarea.value;
+				var rowsRaw = Math.sqrt(b.length);
+				var rows = Math.ceil(rowsRaw);
+
+				var s = Math.floor(canvassize / rows);
+				var reversed = reverse.checked;
+
+				dllink.className = '';
+				warningspan.className = (rowsRaw !== rows) ? '' : 'hidden';
+
+				for (var i = 0; i < rows; i++) {
+					for (var j = 0; j < rows; j++) {
+						var c = b[(i * rows) + j];
+						switch (c) {
+							case '0':
+								ctx.fillStyle = reversed ? 'black' : 'white';
+								break;
+							case '1':
+								ctx.fillStyle = reversed ? 'white' : 'black';
+								break;
+							default:
+								ctx.fillStyle = 'red';
+								break;
+						}
+						ctx.fillRect(j * s, i * s, s, s);
+					}
+				}
+			}
+
+			function ondownload() {
+				console.log('hi');
+				this.href = canvas.toDataURL();
+				this.download = 'qr.png';
+			}
+		</script>
+		<style>
+			body {
+				margin-right: auto;
+				margin-left: auto;
+				width: 800px;
+			}
+			.bad {
+				background-color: #fbb;
+			}
+			.hidden {
+				display: none;
+			}
+			#warning {
+				background-color: #fbb;
+				font-size: 9pt;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>QR Code Generator</h1>
+		<canvas id="qrcode"></canvas><br />
+		<span id="warning" class="hidden">QR Code binary length not a power of 2! (not square)</span><br />
+		<textarea id="hex" placeholder="hex"></textarea><br />
+		<textarea id="binary" placeholder="binary"></textarea><br />
+		<input type="checkbox" id="reverse"/>Reverse colors<br />
+		<button id="generate">Generate</button><a class="hidden" href="#" id="download">Download PNG</a>
+	</body>
+</html>
