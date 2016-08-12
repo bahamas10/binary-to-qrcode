@@ -17,11 +17,26 @@ function hex2bin(h) {
 }
 
 function bin2hex(b) {
-  return parseInt(b, 2).toString(16);
+  // pad binary to a multiple of 4
+  while (!isInteger(b.length / 4)) {
+    b = '0' + b;
+  }
+  var chunk;
+  var i = 0;
+  var hex = '';
+  while ((chunk = b.substr(i, 4)) !== '') {
+    hex += parseInt(chunk, 2).toString(16);
+    i += 4;
+  }
+  return hex;
 }
 
 function lpad(s, i, c) {
   while (s.length < i)
     s = c + s;
   return s;
+}
+
+function isInteger(n) {
+  return n % 1 === 0;
 }

@@ -13,6 +13,8 @@
 			var warning;
 			var reversedbox;
 			var dllink;
+			var wrange;
+			var wrangespan;
 
 			var canvassize = 400;
 
@@ -20,6 +22,8 @@
 			function load() {
 				canvas = document.getElementById('qrcode');
 				ctx = canvas.getContext('2d');
+				wrange = document.getElementById('wrange');
+				wrangespan = document.getElementById('wrange-text');
 				hextextarea = document.getElementById('hex');
 				binarytextarea = document.getElementById('binary');
 				warningspan = document.getElementById('warning');
@@ -27,12 +31,22 @@
 				document.getElementById('generate').onclick = ongenerate;
 				dllink = document.getElementById('download');
 				dllink.onclick = ondownload;
+				reversedbox.onchange = ongenerate;
+
+				wrange.min = 1;
+				wrange.max = 50;
+				wrange.onchange = wrangeonchange;
 
 				hextextarea.style.width = canvassize + 'px';
 				binarytextarea.style.width = canvassize + 'px';
+				hextextarea.style.height = Math.floor(canvassize/4) + 'px';
+				binarytextarea.style.height = Math.floor(canvassize/4) + 'px';
 
 				hextextarea.onkeyup = hexonkeyup;
 				binarytextarea.onkeyup = binaryonkeyup;
+
+				hextextarea.onkeypress = onkeypress;
+				binarytextarea.onkeypress = onkeypress;
 				//ctx.fillRect(20,20,150,100);
 			}
 
@@ -43,8 +57,15 @@
 				return s.match(/^[01]*$/g);
 			}
 
+			function strip(s) {
+				return s.replace(/\s+/g, '');
+			}
+
 			function hexonkeyup() {
-				var s = hextextarea.value;
+				var e = window.event;
+				if (checkenter(e))
+					return false;
+				var s = strip(hextextarea.value);
 
 				// validate
 				if (!validateHex(s)) {
@@ -64,7 +85,11 @@
 			}
 
 			function binaryonkeyup() {
-				var s = binarytextarea.value;
+				var e = window.event;
+				if (checkenter(e))
+					return false;
+				var s = strip(binarytextarea.value);
+				console.log('"%s"', s);
 
 				// validate
 				if (!validateBinary(s)) {
@@ -83,12 +108,39 @@
 				hextextarea.value = h;
 			}
 
-			function ongenerate() {
-				if (!validateHex(hextextarea.value) ||
-				    !validateBinary(binarytextarea.value)) {
+			function canMakeCode() {
+				if (!validateHex(strip(hextextarea.value)) ||
+				    !validateBinary(strip(binarytextarea.value))) {
 					alert('invalid input');
-					return;
+					return false;
 				}
+				if (strip(hextextarea.value) === '')
+					return false;
+				return true;
+			}
+
+			function ongenerate() {
+				if (!canMakeCode())
+					return;
+
+				var b = strip(binarytextarea.value);
+				var rowsRaw = Math.sqrt(b.length);
+				var rows = Math.ceil(rowsRaw);
+				warningspan.className = (rowsRaw !== rows) ? '' : 'hidden';
+
+				wrange.value = rows;
+				wrangespan.textContent = rows;
+				wrange.max = Math.min(Math.floor(rows * 1.3), 100);
+				makecode(rows);
+			}
+
+			function makecode(rows) {
+				if (!canMakeCode())
+					return;
+
+				var b = strip(binarytextarea.value);
+				var reversed = reverse.checked;
+				var s = Math.floor(canvassize / rows);
 
 				canvas.width = canvassize;
 				canvas.height = canvassize;
@@ -96,15 +148,9 @@
 				ctx.fillStyle = 'white';
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-				var b = binarytextarea.value;
-				var rowsRaw = Math.sqrt(b.length);
-				var rows = Math.ceil(rowsRaw);
-
-				var s = Math.floor(canvassize / rows);
-				var reversed = reverse.checked;
-
 				dllink.className = '';
-				warningspan.className = (rowsRaw !== rows) ? '' : 'hidden';
+				wrange.className = '';
+				canvas.className = '';
 
 				for (var i = 0; i < rows; i++) {
 					for (var j = 0; j < rows; j++) {
@@ -126,9 +172,27 @@
 			}
 
 			function ondownload() {
-				console.log('hi');
 				this.href = canvas.toDataURL();
 				this.download = 'qr.png';
+			}
+
+			function checkenter(e) {
+				return e.keyCode == 13 && !e.shiftKey;
+			}
+
+			function onkeypress() {
+				var e = window.event;
+				if (checkenter(e)) {
+					ongenerate();
+					return false;
+				}
+				return true;
+			}
+
+			function wrangeonchange() {
+				var v = this.value;
+				wrangespan.textContent = v;
+				makecode(v);
 			}
 		</script>
 		<style>
@@ -151,11 +215,13 @@
 	</head>
 	<body>
 		<h1>QR Code Generator</h1>
-		<canvas id="qrcode"></canvas><br />
+		<canvas class="hidden" id="qrcode"></canvas><br />
 		<span id="warning" class="hidden">QR Code binary length not a power of 2! (not square)</span><br />
 		<textarea id="hex" placeholder="hex"></textarea><br />
 		<textarea id="binary" placeholder="binary"></textarea><br />
+		<input type="range" class="hidden" id="wrange"/><span id="wrange-text"></span><br />
 		<input type="checkbox" id="reverse"/>Reverse colors<br />
-		<button id="generate">Generate</button><a class="hidden" href="#" id="download">Download PNG</a>
+		<button id="generate">Generate</button><a class="hidden" href="#" id="download">Download PNG</a><br /><br />
+		<small>&copy; Dave Eddy - <a href="https://github.com/bahamas10/binary-to-qrcode">(source code)</a></small>
 	</body>
 </html>
